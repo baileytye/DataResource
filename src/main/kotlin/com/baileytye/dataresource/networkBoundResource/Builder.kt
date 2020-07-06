@@ -105,7 +105,8 @@ class Builder<Network, Local> private constructor(
         apply { this.networkErrorMapper = networkErrorMapper }
 
     /**
-     * Sets the logging interceptor for the resource
+     * Sets the logging interceptor for the resource. This is called on each value emitted as an error,
+     * and the block is passed the error message.
      */
     fun loggingInterceptor(logBlock: (String) -> Unit) =
         apply { this.loggingInterceptor = logBlock }

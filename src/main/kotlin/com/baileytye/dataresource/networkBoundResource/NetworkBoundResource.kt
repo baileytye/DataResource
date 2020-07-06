@@ -10,23 +10,78 @@ import com.baileytye.dataresource.util.safeApiCall
 import com.baileytye.dataresource.util.safeCacheCall
 
 
-/*
+/**
+ * Network resource to help direct the flow of data from network to a local cache, and then to the UI.
+ * For detailed description of data flow, refer to github readme.
+ *
  * Inspiration : https://github.com/mitchtabian/Open-API-Android-App
- * TODO: Missing one feature I want to add: if showLoading is set to false, and you want to display local
- * while the network is fetching, currently it doesn't emit anything
  */
 
 class NetworkBoundResource<Network, Local> internal constructor(
+    /**
+     * Mapper used to convert between local and network data models
+     */
     val mapper: Mapper<Network, Local>,
+
+    /**
+     * Coroutine dispatcher used to run the resource methods
+     */
     val coroutineDispatcher: CoroutineDispatcher,
+
+    /**
+     * Network fetch block. This is the main source of data. Can be null in which case local
+     * flow fetch will be used as the main data source instead.
+     */
     val networkFetchBlock: (suspend () -> Network)?,
+
+    /**
+     * Local flow fetch block, after a successful network call, and a successful local cache,
+     * data is emitted from this source. This is usually a room database source since a cache
+     * will automatically emit a new value. When a network block is defined and this is null,
+     * the network data will be mapped to local and returned through oneShotOperation, or result.
+     */
     val localFlowFetchBlock: (suspend () -> Flow<Local>)?,
+
+    /**
+     * Local cache block to save a successful network call.
+     */
     val localCacheBlock: (suspend (Local) -> Unit)?,
+
+    /**
+     * Specifies whether local data should be emitted in the event of a network error. Only valid
+     * if a local flow fetch block is defined.
+     */
     val showDataOnError: Boolean,
+
+    /**
+     * Specifies whether a loading result should be returned while waiting for the network
+     * fetch block to complete. If false and a local flow fetch block is defined, that data will emit
+     * while waiting for the network block to complete. Once the network block completes and is cached, a
+     * new value will be emitted (if using room for flow fetch).
+     */
     val showLoading: Boolean,
+
+    /**
+     * Error messages used for generic error types. For more control over error messages, implement
+     * [NetworkErrorMapper] and return the results you want through [NetworkResult.GenericError].
+     */
     val errorMessages: ErrorMessagesResource,
+
+    /**
+     * Network timeout used for network calls.
+     */
     val networkTimeout: Long,
+
+    /**
+     * Network error mapper used to map network errors to a [NetworkResult] object which is returned from
+     * the internal safe network call.
+     */
     val networkErrorMapper: NetworkErrorMapper<Network>,
+
+    /**
+     * Logging interceptor called on each [Result.Error] emitted from [getFlowResult] with the
+     * error message given to the block.
+     */
     val loggingInterceptor : ((String) -> Unit)?
 ) {
 
@@ -112,6 +167,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
                     networkErrorMapper = networkErrorMapper
                 )
             yield() //Not sure if this is needed, the safeApiCall may do it as it returns since it's a suspend function
+
             when (networkResponse) {
                 is NetworkResult.Success -> {
                     if (networkResponse.value == null) {
@@ -173,6 +229,9 @@ class NetworkBoundResource<Network, Local> internal constructor(
         if(it is Result.Error) loggingInterceptor?.invoke("")
     }
 
+    /**
+     * Check if local flow fetch block is defined and if so return the first value emitted
+     */
     private suspend fun getLocalIfAvailable(): Local? {
         localFlowFetchBlock?.let {
             return try {
@@ -189,6 +248,9 @@ class NetworkBoundResource<Network, Local> internal constructor(
         return null
     }
 
+    /**
+     * Check if flow fetch block returns an empty value
+     */
     private suspend fun flowFromFetchIsEmpty(): Boolean {
         localFlowFetchBlock?.let {
             return try {
@@ -201,5 +263,8 @@ class NetworkBoundResource<Network, Local> internal constructor(
         return true
     }
 
+    /**
+     * Exception thrown when neither a network, or local block is defined
+     */
     class MissingArgumentException(m: String) : Exception(m)
 }
