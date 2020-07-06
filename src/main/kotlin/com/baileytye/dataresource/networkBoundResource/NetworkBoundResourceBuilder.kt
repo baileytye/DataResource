@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
  * To create a network bound resource, use this class to assign the required parameters for
  * your use case. When ready, call .build() to construct the resource.
  */
-class Builder<Network, Local> private constructor(
+class NetworkBoundResourceBuilder<Network, Local> private constructor(
     private val mapper: Mapper<Network, Local>,
     private var coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private var networkFetchBlock: (suspend () -> Network)? = null,
