@@ -1,6 +1,5 @@
 package NetworkBoundResource
 
-import com.squareup.moshi.Moshi
 import util.DEFAULT_NETWORK_TIMEOUT
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -9,7 +8,6 @@ import model.DefaultErrorMessages
 import model.ErrorMessagesResource
 import model.Mapper
 import model.NetworkErrorMapper
-import okio.BufferedSource
 
 data class Builder<Network, Local>(
     private var mapper: Mapper<Network, Local>,

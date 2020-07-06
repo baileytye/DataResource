@@ -2,7 +2,6 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.3.72'
 }
 
-apply plugin: 'kotlin-kapt'
 apply plugin: 'maven'
 
 group 'org.baileytye'
@@ -18,10 +17,6 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.7"
 
-    //Moshi
-    implementation "com.squareup.moshi:moshi-kotlin:$moshi_version"
-    kapt "com.squareup.moshi:moshi-kotlin-codegen:$moshi_version"
-    kaptTest "com.squareup.moshi:moshi-kotlin-codegen:$moshi_version"
 }
 
 compileKotlin {
