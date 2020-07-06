@@ -1,4 +1,4 @@
-package NetworkBoundResource
+package networkBoundResource
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.*

@@ -4,9 +4,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import model.DefaultNetworkErrorMapper
+import networkBoundResource.DefaultNetworkErrorMapper
 import model.ErrorMessagesResource
-import model.NetworkErrorMapper
+import networkBoundResource.NetworkErrorMapper
 import model.NetworkResult
 import java.io.IOException
 import model.Result
@@ -17,7 +17,9 @@ suspend fun <T> safeApiCall(
     apiBlock: suspend () -> T?,
     errorMessages: ErrorMessagesResource,
     timeout: Long = DEFAULT_NETWORK_TIMEOUT,
-    networkErrorMapper: NetworkErrorMapper<T> = DefaultNetworkErrorMapper(errorMessages)
+    networkErrorMapper: NetworkErrorMapper<T> = DefaultNetworkErrorMapper(
+        errorMessages
+    )
 ): NetworkResult<T?> {
     return withContext(dispatcher) {
         try {

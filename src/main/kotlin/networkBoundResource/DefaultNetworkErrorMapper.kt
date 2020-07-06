@@ -1,8 +1,11 @@
-package model
+package networkBoundResource
 
+import model.ErrorMessagesResource
+import model.NetworkResult
 import java.io.IOException
 
-class DefaultNetworkErrorMapper<T>(private val errorMessages: ErrorMessagesResource) : NetworkErrorMapper<T> {
+class DefaultNetworkErrorMapper<T>(private val errorMessages: ErrorMessagesResource) :
+    NetworkErrorMapper<T> {
     override fun mapNetworkError(throwable: Throwable): NetworkResult<T> {
         return when (throwable) {
             is IOException -> NetworkResult.NetworkError

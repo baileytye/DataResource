@@ -1,16 +1,13 @@
-package NetworkBoundResource
+package networkBoundResource
 
 import util.DEFAULT_NETWORK_TIMEOUT
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import model.DefaultErrorMessages
-import model.ErrorMessagesResource
-import model.Mapper
-import model.NetworkErrorMapper
+import model.*
 
-data class Builder<Network, Local>(
-    private var mapper: Mapper<Network, Local>,
+data class Builder<Network, Local> private constructor(
+    private val mapper: Mapper<Network, Local>,
     private var coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private var networkFetchBlock: (suspend () -> Network)? = null,
     private var localFlowFetchBlock: (suspend () -> Flow<Local>)? = null,
@@ -19,9 +16,28 @@ data class Builder<Network, Local>(
     private var showLoading: Boolean = true,
     private var errorMessages: ErrorMessagesResource = DefaultErrorMessages(),
     private var networkTimeout: Long = DEFAULT_NETWORK_TIMEOUT,
-    private var networkErrorMapper: NetworkErrorMapper<Network>,
+    private var networkErrorMapper: NetworkErrorMapper<Network> = DefaultNetworkErrorMapper<Network>(
+        errorMessages
+    ),
     private var loggingInterceptor: ((String) -> Unit)? = null
 ) {
+
+    constructor(mapper: Mapper<Network, Local>) : this(
+        mapper,
+        coroutineDispatcher = Dispatchers.IO,
+        networkFetchBlock = null,
+        localFlowFetchBlock = null,
+        localCacheBlock = null,
+        showDataOnError = false,
+        showLoading = true,
+        errorMessages = DefaultErrorMessages(),
+        networkTimeout = DEFAULT_NETWORK_TIMEOUT,
+        networkErrorMapper  = DefaultNetworkErrorMapper<Network>(
+            DefaultErrorMessages()
+        ),
+        loggingInterceptor = null
+    )
+
     /**
      * Sets coroutine dispatcher for calls to run on
      */
@@ -84,7 +100,7 @@ data class Builder<Network, Local>(
     /**
      * Sets the logging interceptor for the resource
      */
-    fun loggingInterceptor(logBlock : (String) -> Unit) =
+    fun loggingInterceptor(logBlock: (String) -> Unit) =
         apply { this.loggingInterceptor = logBlock }
 
 
