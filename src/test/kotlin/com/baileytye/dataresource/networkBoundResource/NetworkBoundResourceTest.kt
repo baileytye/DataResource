@@ -6,7 +6,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.runBlockingTest
-import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -237,6 +236,7 @@ internal class NetworkBoundResourceTest {
                 assertThat(cachedLocally).isTrue()
             }
 
+        @Test
         fun `check fetch network success save to local cache - return local data`() =
             dispatcher.runBlockingTest {
                 //Given
@@ -299,7 +299,6 @@ internal class NetworkBoundResourceTest {
             dispatcher.runBlockingTest {
                 //Given
                 val builder = NetworkBoundResourceBuilder(mapper)
-                val networkData = "Some network data"
                 var localData = "Old data"
                 var localFetched = false
                 var cachedLocal = false
@@ -336,8 +335,6 @@ internal class NetworkBoundResourceTest {
             dispatcher.runBlockingTest {
                 //Given
                 val builder = NetworkBoundResourceBuilder(mapper)
-                val networkData = "Some network data"
-                var localData = "Old data"
                 var localFetched = false
                 var cachedLocal = false
 
@@ -347,7 +344,6 @@ internal class NetworkBoundResourceTest {
                     .showDataOnError(true)
                     .localCacheBlock {
                         cachedLocal = true
-                        localData = it
                     }
                     .localFlowFetchBlock {
                         localFetched = true
