@@ -1,15 +1,15 @@
-package util
+package com.baileytye.dataresource.util
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import networkBoundResource.DefaultNetworkErrorMapper
-import model.ErrorMessagesResource
-import networkBoundResource.NetworkErrorMapper
-import model.NetworkResult
+import com.baileytye.dataresource.networkBoundResource.DefaultNetworkErrorMapper
+import com.baileytye.dataresource.model.ErrorMessagesResource
+import com.baileytye.dataresource.networkBoundResource.NetworkErrorMapper
+import com.baileytye.dataresource.model.NetworkResult
 import java.io.IOException
-import model.Result
+import com.baileytye.dataresource.model.Result
 
 
 suspend fun <T> safeApiCall(

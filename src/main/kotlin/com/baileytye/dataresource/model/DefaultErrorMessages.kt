@@ -1,4 +1,4 @@
-package model
+package com.baileytye.dataresource.model
 
 data class DefaultErrorMessages(
     override val networkTimeout: String = "Network timeout",

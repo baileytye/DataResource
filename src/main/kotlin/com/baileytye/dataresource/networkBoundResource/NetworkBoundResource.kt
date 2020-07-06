@@ -1,11 +1,13 @@
-package networkBoundResource
+package com.baileytye.dataresource.networkBoundResource
 
+import com.baileytye.dataresource.model.ErrorMessagesResource
+import com.baileytye.dataresource.model.NetworkResult
+import com.baileytye.dataresource.model.Result
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.yield
-import model.*
-import util.safeApiCall
-import util.safeCacheCall
+import com.baileytye.dataresource.util.safeApiCall
+import com.baileytye.dataresource.util.safeCacheCall
 
 
 /*
@@ -35,13 +37,14 @@ class NetworkBoundResource<Network, Local> internal constructor(
     suspend fun oneShotOperation(): Result<Local> {
 
         if (networkFetchBlock != null) {
-            val networkResponse: NetworkResult<Network?> = safeApiCall(
-                dispatcher = coroutineDispatcher,
-                apiBlock = networkFetchBlock,
-                errorMessages = errorMessages,
-                timeout = networkTimeout,
-                networkErrorMapper = networkErrorMapper
-            )
+            val networkResponse: NetworkResult<Network?> =
+                safeApiCall(
+                    dispatcher = coroutineDispatcher,
+                    apiBlock = networkFetchBlock,
+                    errorMessages = errorMessages,
+                    timeout = networkTimeout,
+                    networkErrorMapper = networkErrorMapper
+                )
             when (networkResponse) {
                 is NetworkResult.Success -> {
                     if (networkResponse.value == null) {
@@ -63,7 +66,10 @@ class NetworkBoundResource<Network, Local> internal constructor(
             }
 
         } else {
-            return Result.Error(MissingArgumentException("No data requested"), null)
+            return Result.Error(
+                MissingArgumentException(
+                    "No data requested"
+                ), null)
         }
     }
 
@@ -97,13 +103,14 @@ class NetworkBoundResource<Network, Local> internal constructor(
 
         //Attempt network call if defined
         if (networkFetchBlock != null) {
-            val networkResponse: NetworkResult<Network?> = safeApiCall(
-                dispatcher = coroutineDispatcher,
-                apiBlock = networkFetchBlock,
-                errorMessages = errorMessages,
-                timeout = networkTimeout,
-                networkErrorMapper = networkErrorMapper
-            )
+            val networkResponse: NetworkResult<Network?> =
+                safeApiCall(
+                    dispatcher = coroutineDispatcher,
+                    apiBlock = networkFetchBlock,
+                    errorMessages = errorMessages,
+                    timeout = networkTimeout,
+                    networkErrorMapper = networkErrorMapper
+                )
             yield() //Not sure if this is needed, the safeApiCall may do it as it returns since it's a suspend function
             when (networkResponse) {
                 is NetworkResult.Success -> {
@@ -155,7 +162,12 @@ class NetworkBoundResource<Network, Local> internal constructor(
                 Result.Loading -> emit(Result.Error(Exception(errorMessages.unknown)))
             }
         } else {
-            emit(Result.Error(MissingArgumentException("No data requested")))
+            emit(
+                Result.Error(
+                    MissingArgumentException(
+                        "No data requested"
+                    )
+                ))
         }
     }.onEach {
         if(it is Result.Error) loggingInterceptor?.invoke("")

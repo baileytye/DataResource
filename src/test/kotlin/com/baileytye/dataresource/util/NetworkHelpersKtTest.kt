@@ -1,17 +1,17 @@
-package util
+package com.baileytye.dataresource.util
 
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.runBlockingTest
-import model.DefaultErrorMessages
-import model.NetworkResult
+import com.baileytye.dataresource.model.DefaultErrorMessages
+import com.baileytye.dataresource.model.NetworkResult
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import model.Result
-import networkBoundResource.NetworkErrorMapper
+import com.baileytye.dataresource.model.Result
+import com.baileytye.dataresource.networkBoundResource.NetworkErrorMapper
 import java.io.IOException
 
 @ExperimentalCoroutinesApi
@@ -43,12 +43,14 @@ class NetworkHelpersKtTest{
         @Test
         fun `check custom error mapper works as expected`() = dispatcher.runBlockingTest {
             //Given
-            val error = Exception("This went horribly wrong, don't show this message")
-            val networkErrorMapper = object : NetworkErrorMapper<String> {
+            val networkErrorMapper = object :
+                NetworkErrorMapper<String> {
                 override fun mapNetworkError(throwable: Throwable): NetworkResult<String> {
                     return when(throwable){
-                        is IOException -> {NetworkResult.GenericError(errorMessage = "IO")}
-                        else -> {NetworkResult.GenericError(errorMessage = "else")}
+                        is IOException -> {
+                            NetworkResult.GenericError(errorMessage = "IO")}
+                        else -> {
+                            NetworkResult.GenericError(errorMessage = "else")}
                     }
                 }
             }
@@ -135,7 +137,6 @@ class NetworkHelpersKtTest{
         @Test
         fun `Call safeCacheCall - throw IO error`() = dispatcher.runBlockingTest {
             //Given
-            val data = "Successful local data"
             val ioError = IOException("Some io exception")
 
             //When
@@ -153,7 +154,6 @@ class NetworkHelpersKtTest{
         @Test
         fun `Call safeCacheCall - throw unknown error`() = dispatcher.runBlockingTest {
             //Given
-            val data = "Successful local data"
             val unknownError = Exception("Some unknown exception")
 
             //When

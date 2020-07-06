@@ -1,4 +1,4 @@
-package model
+package com.baileytye.dataresource.model
 
 sealed class NetworkResult<out T> {
     data class Success<out T>(val value: T) : NetworkResult<T>()

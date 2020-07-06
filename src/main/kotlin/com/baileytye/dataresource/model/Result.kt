@@ -1,7 +1,4 @@
-package model
-
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.contract
+package com.baileytye.dataresource.model
 
 
 /**
@@ -37,7 +34,10 @@ sealed class Result<out R> {
                 Loading
             }
             is Error -> {
-                Error(exception, if (data != null) block(data) else null)
+                Error(
+                    exception,
+                    if (data != null) block(data) else null
+                )
             }
         }
     }

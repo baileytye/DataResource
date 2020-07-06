@@ -1,4 +1,4 @@
-package networkBoundResource
+package com.baileytye.dataresource.networkBoundResource
 
 interface Mapper<Network, Local> {
     fun networkToLocal(network : Network) : Local

@@ -1,12 +1,13 @@
-package networkBoundResource
+package com.baileytye.dataresource.networkBoundResource
 
-import util.DEFAULT_NETWORK_TIMEOUT
+import com.baileytye.dataresource.model.DefaultErrorMessages
+import com.baileytye.dataresource.model.ErrorMessagesResource
+import com.baileytye.dataresource.util.DEFAULT_NETWORK_TIMEOUT
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import model.*
 
-data class Builder<Network, Local> private constructor(
+class Builder<Network, Local> private constructor(
     private val mapper: Mapper<Network, Local>,
     private var coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private var networkFetchBlock: (suspend () -> Network)? = null,

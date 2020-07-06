@@ -1,7 +1,7 @@
-package networkBoundResource
+package com.baileytye.dataresource.networkBoundResource
 
-import model.ErrorMessagesResource
-import model.NetworkResult
+import com.baileytye.dataresource.model.ErrorMessagesResource
+import com.baileytye.dataresource.model.NetworkResult
 import java.io.IOException
 
 class DefaultNetworkErrorMapper<T>(private val errorMessages: ErrorMessagesResource) :

@@ -1,4 +1,4 @@
-package model
+package com.baileytye.dataresource.model
 
 interface ErrorMessagesResource {
     val networkTimeout: String
