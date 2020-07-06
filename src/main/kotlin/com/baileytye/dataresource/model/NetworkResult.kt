@@ -1,5 +1,8 @@
 package com.baileytye.dataresource.model
 
+/**
+ * Wrapper class for a network result
+ */
 sealed class NetworkResult<out T> {
     data class Success<out T>(val value: T) : NetworkResult<T>()
 

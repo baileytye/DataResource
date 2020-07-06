@@ -7,6 +7,12 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Builder to construct NetworkBoundResources.
+ *
+ * To create a network bound resource, use this class to assign the required parameters for
+ * your use case. When ready, call .build() to construct the resource.
+ */
 class Builder<Network, Local> private constructor(
     private val mapper: Mapper<Network, Local>,
     private var coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -105,6 +111,9 @@ class Builder<Network, Local> private constructor(
         apply { this.loggingInterceptor = logBlock }
 
 
+    /**
+     * Builds the NetworkBoundResource
+     */
     fun build() = NetworkBoundResource(
         mapper = this.mapper,
         coroutineDispatcher = this.coroutineDispatcher,
