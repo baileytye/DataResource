@@ -29,7 +29,6 @@ suspend fun <T> safeApiCall(
                     NetworkResult.Success(apiBlock())
                 } catch (throwable: Throwable) {
                         networkErrorMapper.mapNetworkError(throwable)
-
                 }
             }
         } catch (throwable: Throwable) {
