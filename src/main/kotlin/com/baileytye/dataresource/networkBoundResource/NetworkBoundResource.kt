@@ -95,7 +95,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
      * To create a network bound resource, use this class to assign the required parameters for
      * your use case. When ready, call .build() to construct the resource.
      */
-     class Builder<Network, Local> private constructor(
+    class Builder<Network, Local> private constructor(
         private val mapper: Mapper<Network, Local>,
         private var coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO,
         private var networkFetchBlock: (suspend () -> Network)? = null,
@@ -218,7 +218,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
      */
     suspend fun oneShotOperation(): Result<Local> {
 
-        if (networkFetchBlock != null) {
+        val result : Result<Local> =  if (networkFetchBlock != null) {
             val networkResponse: NetworkResult<Network?> =
                 safeApiCall(
                     dispatcher = coroutineDispatcher,
@@ -229,7 +229,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
                 )
             when (networkResponse) {
                 is NetworkResult.Success -> {
-                    return if (networkResponse.value == null) {
+                    if (networkResponse.value == null) {
                         Result.Error(Exception(errorMessages.unknown))
                     } else {
                         //If there's a local save block, save and emit local, otherwise emit network
@@ -240,20 +240,25 @@ class NetworkBoundResource<Network, Local> internal constructor(
                     }
                 }
                 is NetworkResult.GenericError -> {
-                    return (Result.Error(Exception(networkResponse.errorMessage)))
+                    (Result.Error(Exception(networkResponse.errorMessage)))
                 }
                 NetworkResult.NetworkError -> {
-                    return (Result.Error(Exception(errorMessages.genericNetwork)))
+                    (Result.Error(Exception(errorMessages.genericNetwork)))
                 }
             }
 
         } else {
-            return Result.Error(
+            Result.Error(
                 MissingArgumentException(
                     "No data requested"
                 ), null
             )
         }
+
+        if(result is Result.Error) {
+            result.exception.message?.let { loggingInterceptor?.invoke(it) }
+        }
+        return result
     }
 
     /**
@@ -354,8 +359,10 @@ class NetworkBoundResource<Network, Local> internal constructor(
                 )
             )
         }
-    }.onEach {
-        if (it is Result.Error) loggingInterceptor?.invoke("")
+    }.onEach {result ->
+        if (result is Result.Error) {
+            result.exception.message?.let { loggingInterceptor?.invoke(it) }
+        }
     }
 
     /**

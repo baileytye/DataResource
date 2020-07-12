@@ -364,6 +364,33 @@ internal class NetworkBoundResourceTest {
                 assertThat(cachedLocal).isFalse()
             }
 
+        @Test
+        fun `check logging interceptor is called on result error`() = runBlockingTest {
+            //Given
+            val builder = NetworkBoundResource.Builder(mapper)
+            var loggedMessage = ""
+
+            val resource = builder
+                .networkFetchBlock { throw Exception("Some network exception") }
+                .showLoading(true)
+                .showDataOnError(true)
+                .loggingInterceptor {
+                    loggedMessage = it
+                }
+                .coroutineDispatcher(dispatcher)
+                .build()
+
+            //When
+            val response = resource.getFlowResult()
+            val list = response.toList()
+
+            //Then
+            assertThat(list).hasSize(2)
+            assertThat(list[0]).isInstanceOf(Result.Loading::class.java)
+            assertThat((list[1] as Result.Error).data).isNull()
+            assertThat(loggedMessage).isEqualTo(errorMessages.unknown)
+        }
+
     }
 
     @Nested
@@ -443,6 +470,30 @@ internal class NetworkBoundResourceTest {
             assertThat(result).isInstanceOf(Result.Error::class.java)
             assertThat((result as Result.Error).data).isNull()
             assertThat(result.exception.message ).isEqualTo(errorMessages.networkTimeout)
+        }
+
+        @Test
+        fun `check logging interceptor is called on result error`() = runBlockingTest {
+            //Given
+            val builder = NetworkBoundResource.Builder(mapper)
+            var loggedMessage = ""
+
+            val resource = builder
+                .networkFetchBlock { throw Exception("Some network exception") }
+                .showLoading(true)
+                .showDataOnError(true)
+                .loggingInterceptor {
+                    loggedMessage = it
+                }
+                .coroutineDispatcher(dispatcher)
+                .build()
+
+            //When
+            val response = resource.oneShotOperation()
+
+            //Then
+            assertThat(response).isInstanceOf(Result.Error::class.java)
+            assertThat(loggedMessage).isEqualTo(errorMessages.unknown)
         }
     }
 
