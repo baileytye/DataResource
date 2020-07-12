@@ -32,7 +32,7 @@ internal class NetworkBoundResourceTest {
         @Test
         fun `check empty builder returns missing argument error`() = runBlockingTest {
             //Given
-            val resource = NetworkBoundResourceBuilder(mapper).build()
+            val resource = NetworkBoundResource.Builder(mapper).build()
 
             //When
             val resultFlow = resource.getFlowResult()
@@ -47,7 +47,7 @@ internal class NetworkBoundResourceTest {
         @Test
         fun `check timeout returns timeout error`() = dispatcher.runBlockingTest {
             //Given
-            val builder = NetworkBoundResourceBuilder(mapper)
+            val builder = NetworkBoundResource.Builder(mapper)
             var localCached = false
 
             val resource = builder
@@ -76,7 +76,7 @@ internal class NetworkBoundResourceTest {
         fun `check fetch network and throw unknown error - local is empty - return error`() =
             dispatcher.runBlockingTest {
                 //Given
-                val builder = NetworkBoundResourceBuilder(mapper)
+                val builder = NetworkBoundResource.Builder(mapper)
                 var localCached = false
 
                 val resource = builder
@@ -104,7 +104,7 @@ internal class NetworkBoundResourceTest {
         fun `check fetch network and throw unknown error - local is present - return local, then error`() =
             dispatcher.runBlockingTest {
                 //Given
-                val builder = NetworkBoundResourceBuilder(mapper)
+                val builder = NetworkBoundResource.Builder(mapper)
                 var localCached = false
 
                 val resource = builder
@@ -133,7 +133,7 @@ internal class NetworkBoundResourceTest {
         fun `check fetch network and throw unknown error - local is present - return local, then error with local`() =
             dispatcher.runBlockingTest {
                 //Given
-                val builder = NetworkBoundResourceBuilder(mapper)
+                val builder = NetworkBoundResource.Builder(mapper)
                 var localCached = false
 
                 val resource = builder
@@ -164,7 +164,7 @@ internal class NetworkBoundResourceTest {
         fun `check fetch network and throw unknown error - no local block - return error`() =
             dispatcher.runBlockingTest {
                 //Given
-                val builder = NetworkBoundResourceBuilder(mapper)
+                val builder = NetworkBoundResource.Builder(mapper)
                 var localCached = false
 
                 val resource = builder
@@ -191,7 +191,7 @@ internal class NetworkBoundResourceTest {
         fun `check fetch network success avoid local cache - return network data`() =
             dispatcher.runBlockingTest {
                 //Given
-                val builder = NetworkBoundResourceBuilder(mapper)
+                val builder = NetworkBoundResource.Builder(mapper)
                 val networkData = "Some network data"
 
                 val resource = builder
@@ -214,7 +214,7 @@ internal class NetworkBoundResourceTest {
         fun `check fetch network success save to local cache - return network data`() =
             dispatcher.runBlockingTest {
                 //Given
-                val builder = NetworkBoundResourceBuilder(mapper)
+                val builder = NetworkBoundResource.Builder(mapper)
                 val networkData ="Some network data"
                 var cachedLocally = false
 
@@ -240,7 +240,7 @@ internal class NetworkBoundResourceTest {
         fun `check fetch network success save to local cache - return local data`() =
             dispatcher.runBlockingTest {
                 //Given
-                val builder = NetworkBoundResourceBuilder(mapper)
+                val builder = NetworkBoundResource.Builder(mapper)
                 val networkData ="Some network data"
                 var localData = "Old data"
                 var localFetched = false
@@ -276,7 +276,7 @@ internal class NetworkBoundResourceTest {
         fun `check fetch network test not displaying loading - return network`() =
             dispatcher.runBlockingTest {
                 //Given
-                val builder = NetworkBoundResourceBuilder(mapper)
+                val builder = NetworkBoundResource.Builder(mapper)
                 val networkData ="Some network data"
 
                 val resource = builder
@@ -298,7 +298,7 @@ internal class NetworkBoundResourceTest {
         fun `check fetch network with error, return error with non null local data`() =
             dispatcher.runBlockingTest {
                 //Given
-                val builder = NetworkBoundResourceBuilder(mapper)
+                val builder = NetworkBoundResource.Builder(mapper)
                 var localData = "Old data"
                 var localFetched = false
                 var cachedLocal = false
@@ -334,7 +334,7 @@ internal class NetworkBoundResourceTest {
         fun `check fetch network with error, return error with null local data`() =
             dispatcher.runBlockingTest {
                 //Given
-                val builder = NetworkBoundResourceBuilder(mapper)
+                val builder = NetworkBoundResource.Builder(mapper)
                 var localFetched = false
                 var cachedLocal = false
 
@@ -365,5 +365,86 @@ internal class NetworkBoundResourceTest {
             }
 
     }
+
+    @Nested
+    @DisplayName("One shot")
+    inner class OneShot {
+
+        @Test
+        fun `check oneshot fetch network with empty builder`() = dispatcher.runBlockingTest {
+            //Given
+            val builder = NetworkBoundResource.Builder(mapper)
+            val resource = builder
+                .coroutineDispatcher(dispatcher)
+                .build()
+
+            //When
+            val result = resource.oneShotOperation()
+
+            //Then
+            assertThat(result).isInstanceOf(Result.Error::class.java)
+            assertThat((result as Result.Error).exception).isInstanceOf(NetworkBoundResource.MissingArgumentException::class.java)
+        }
+
+        @Test
+        fun `check oneshot fetch network success`() = dispatcher.runBlockingTest {
+            //Given
+            val builder = NetworkBoundResource.Builder(mapper)
+            val networkData = "Network data"
+            val resource = builder
+                .networkFetchBlock { networkData }
+                .coroutineDispatcher(dispatcher)
+                .build()
+
+            //When
+            val result = resource.oneShotOperation()
+
+            //Then
+            assertThat(result).isInstanceOf(Result.Success::class.java)
+            assertThat((result as Result.Success).data).isEqualTo(mapper.networkToLocal(networkData))
+        }
+
+        @Test
+        fun `check oneshot fetch network with unknown error`() = dispatcher.runBlockingTest {
+            //Given
+            val builder = NetworkBoundResource.Builder(mapper)
+            val resource = builder
+                .networkFetchBlock { throw Exception("Some unknown error") }
+                .coroutineDispatcher(dispatcher)
+                .build()
+
+            //When
+            val result = resource.oneShotOperation()
+
+            //Then
+            assertThat(result).isInstanceOf(Result.Error::class.java)
+            assertThat((result as Result.Error).data).isNull()
+            assertThat(result.exception.message ).isEqualTo(errorMessages.unknown)
+        }
+
+        @Test
+        fun `check oneshot fetch network with timeout error`() = dispatcher.runBlockingTest {
+            //Given
+            val builder = NetworkBoundResource.Builder(mapper)
+            val networkData = "Network data"
+            val resource = builder
+                .networkFetchBlock {
+                    delay(200)
+                    networkData
+                }
+                .networkTimeout(100)
+                .coroutineDispatcher(dispatcher)
+                .build()
+
+            //When
+            val result = resource.oneShotOperation()
+
+            //Then
+            assertThat(result).isInstanceOf(Result.Error::class.java)
+            assertThat((result as Result.Error).data).isNull()
+            assertThat(result.exception.message ).isEqualTo(errorMessages.networkTimeout)
+        }
+    }
+
 
 }

@@ -1,13 +1,16 @@
 package com.baileytye.dataresource.networkBoundResource
 
+import com.baileytye.dataresource.model.DefaultErrorMessages
 import com.baileytye.dataresource.model.ErrorMessagesResource
 import com.baileytye.dataresource.model.NetworkResult
 import com.baileytye.dataresource.model.Result
+import com.baileytye.dataresource.util.DEFAULT_NETWORK_TIMEOUT
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.yield
 import com.baileytye.dataresource.util.safeApiCall
 import com.baileytye.dataresource.util.safeCacheCall
+import kotlinx.coroutines.Dispatchers
 
 
 /**
@@ -82,8 +85,132 @@ class NetworkBoundResource<Network, Local> internal constructor(
      * Logging interceptor called on each [Result.Error] emitted from [getFlowResult] with the
      * error message given to the block.
      */
-    val loggingInterceptor : ((String) -> Unit)?
+    val loggingInterceptor: ((String) -> Unit)?
 ) {
+
+
+    /**
+     * Builder to construct NetworkBoundResources.
+     *
+     * To create a network bound resource, use this class to assign the required parameters for
+     * your use case. When ready, call .build() to construct the resource.
+     */
+     class Builder<Network, Local> private constructor(
+        private val mapper: Mapper<Network, Local>,
+        private var coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO,
+        private var networkFetchBlock: (suspend () -> Network)? = null,
+        private var localFlowFetchBlock: (suspend () -> Flow<Local>)? = null,
+        private var localCacheBlock: (suspend (Local) -> Unit)? = null,
+        private var showDataOnError: Boolean = false,
+        private var showLoading: Boolean = true,
+        private var errorMessages: ErrorMessagesResource = DefaultErrorMessages(),
+        private var networkTimeout: Long = DEFAULT_NETWORK_TIMEOUT,
+        private var networkErrorMapper: NetworkErrorMapper<Network> = DefaultNetworkErrorMapper<Network>(
+            errorMessages
+        ),
+        private var loggingInterceptor: ((String) -> Unit)? = null
+    ) {
+
+        constructor(mapper: Mapper<Network, Local>) : this(
+            mapper,
+            coroutineDispatcher = Dispatchers.IO,
+            networkFetchBlock = null,
+            localFlowFetchBlock = null,
+            localCacheBlock = null,
+            showDataOnError = false,
+            showLoading = true,
+            errorMessages = DefaultErrorMessages(),
+            networkTimeout = DEFAULT_NETWORK_TIMEOUT,
+            networkErrorMapper = DefaultNetworkErrorMapper<Network>(
+                DefaultErrorMessages()
+            ),
+            loggingInterceptor = null
+        )
+
+        /**
+         * Sets coroutine dispatcher for calls to run on
+         */
+        fun coroutineDispatcher(coroutineDispatcher: CoroutineDispatcher) =
+            apply { this.coroutineDispatcher = coroutineDispatcher }
+
+        /**
+         * Sets network fetch block that will be executed
+         */
+        fun networkFetchBlock(networkFetchBlock: suspend () -> Network) =
+            apply { this.networkFetchBlock = networkFetchBlock }
+
+        /**
+         * Sets local flow fetch block, typically this is a flow from a Room database that will
+         * emit new values when they are changed
+         */
+        fun localFlowFetchBlock(localFlowFetchBlock: suspend () -> Flow<Local>) =
+            apply { this.localFlowFetchBlock = localFlowFetchBlock }
+
+        /**
+         * Sets cache block executed when network returns a success
+         * @param localCacheBlock passes data converted to local object from network response
+         */
+        fun localCacheBlock(localCacheBlock: (suspend (Local) -> Unit)?) =
+            apply { this.localCacheBlock = localCacheBlock }
+
+        /**
+         * Sets show data on error flag. When this is true, data will be emitted along with an error
+         * message when an error occurs. When this is false, only an error message will be emitted; null data.
+         */
+        fun showDataOnError(showDataOnError: Boolean) =
+            apply { this.showDataOnError = showDataOnError }
+
+        /**
+         * Sets whether loading result should be emitted. When false, local data will be emitted during
+         * loading.
+         */
+        fun showLoading(showLoading: Boolean) =
+            apply { this.showLoading = showLoading }
+
+        /**
+         * Sets the error messages to be displayed on errors. Useful for when different languages are
+         * required.
+         */
+        fun errorMessages(errorMessages: ErrorMessagesResource) =
+            apply { this.errorMessages = errorMessages }
+
+        /**
+         * Sets the network timeout value.
+         */
+        fun networkTimeout(timeout: Long) =
+            apply { this.networkTimeout = timeout }
+
+        /**
+         * Sets the mapper used to convert network errors to a NetworkResult object
+         */
+        fun networkErrorMapper(networkErrorMapper: NetworkErrorMapper<Network>) =
+            apply { this.networkErrorMapper = networkErrorMapper }
+
+        /**
+         * Sets the logging interceptor for the resource. This is called on each value emitted as an error,
+         * and the block is passed the error message.
+         */
+        fun loggingInterceptor(logBlock: (String) -> Unit) =
+            apply { this.loggingInterceptor = logBlock }
+
+
+        /**
+         * Builds the NetworkBoundResource
+         */
+        fun build() = NetworkBoundResource(
+            mapper = this.mapper,
+            coroutineDispatcher = this.coroutineDispatcher,
+            networkFetchBlock = this.networkFetchBlock,
+            localFlowFetchBlock = this.localFlowFetchBlock,
+            localCacheBlock = this.localCacheBlock,
+            showDataOnError = this.showDataOnError,
+            showLoading = this.showLoading,
+            errorMessages = this.errorMessages,
+            networkTimeout = this.networkTimeout,
+            networkErrorMapper = this.networkErrorMapper,
+            loggingInterceptor = this.loggingInterceptor
+        )
+    }
 
     /**
      * Execute a one shot operation, cannot show loading or data on error since it is only a suspend
@@ -102,14 +229,14 @@ class NetworkBoundResource<Network, Local> internal constructor(
                 )
             when (networkResponse) {
                 is NetworkResult.Success -> {
-                    if (networkResponse.value == null) {
-                        return Result.Error(Exception(errorMessages.unknown))
+                    return if (networkResponse.value == null) {
+                        Result.Error(Exception(errorMessages.unknown))
                     } else {
                         //If there's a local save block, save and emit local, otherwise emit network
                         localCacheBlock?.let { cacheBlock ->
                             cacheBlock(mapper.networkToLocal(networkResponse.value))
                         }
-                        return (Result.Success(mapper.networkToLocal(networkResponse.value)))
+                        (Result.Success(mapper.networkToLocal(networkResponse.value)))
                     }
                 }
                 is NetworkResult.GenericError -> {
@@ -124,7 +251,8 @@ class NetworkBoundResource<Network, Local> internal constructor(
             return Result.Error(
                 MissingArgumentException(
                     "No data requested"
-                ), null)
+                ), null
+            )
         }
     }
 
@@ -132,7 +260,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
      * Get the flow of results/errors of the network bound resource. Call this to retrieve network data
      * with loading, and local cached results.
      */
-    fun getFlowResult() : Flow<Result<Local>> = flow {
+    fun getFlowResult(): Flow<Result<Local>> = flow {
 
         suspend fun emitLocalIfNotNull(e: Exception) {
             localFlowFetchBlock?.let { localFlow ->
@@ -223,10 +351,11 @@ class NetworkBoundResource<Network, Local> internal constructor(
                     MissingArgumentException(
                         "No data requested"
                     )
-                ))
+                )
+            )
         }
     }.onEach {
-        if(it is Result.Error) loggingInterceptor?.invoke("")
+        if (it is Result.Error) loggingInterceptor?.invoke("")
     }
 
     /**
