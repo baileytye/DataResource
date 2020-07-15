@@ -31,7 +31,7 @@ private fun createGetStringResource() = NetworkBoundResource.Builder(mapper)
 When a local cache block is specified, on a successful network fetch, the result will be mapped to a local object by the specified
 mapper, and given to this block.
 When a local flow fetch block is specified, any new value emitted by this flow is emitted by getFlowResult() while obeying the flow
-chart shown.
+chart shown below.
 
 ### Use For Flow Result
 ```kotlin
@@ -92,3 +92,10 @@ val networkErrorMapper: NetworkErrorMapper = DefaultNetworkErrorMapper(
  */
 val loggingInterceptor: ((String) -> Unit)? = null
 ```
+
+## Flow Chart
+
+The flow of execution is shown below. This is for a Flow response, however the one shot operation will follow similar rules, ignoring loading and flowFetchBlock. The caching is still executed during a one shot operation, but the flowFetchBlock is ignored.
+
+
+![alt text](https://github.com/baileytye/DataResource/blob/master/Data%20Resource%20Flow%20Chart.png)
