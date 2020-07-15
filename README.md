@@ -52,6 +52,9 @@ When a local flow fetch block is specified, any new value emitted by this flow i
 chart shown below.
 
 ### Use For Flow Result
+
+Commonly used to monitor Room database, and update with network data.
+
 ```kotlin
 //In Repository
 fun getStringResultFromRepository() : Flow<Result<String>> = createGetStringResource().getFlowResult()
@@ -80,11 +83,30 @@ val string : LiveData<String> = result.map {
 
 ```
 ### Use For One Shot Fetch Operation
+
+Commonly used for one off operations, or for POST/PUT/DELETE type operations where you aren't observing the data, and instead just need a result.
+
 ```kotlin
 
 suspend fun getString(): Result<String> {
     return createGetStringResource().oneShotOperation()
 }
+
+//In viewModel
+fun getString() : String {
+    viewModelScope.launch {
+        val result = getString()
+        
+        //process result
+        when(result) {
+            is Result.Success -> {/* handle successful string */}
+            is Result.Error -> {/* handle error */}
+            else -> {/* required but won't ever happen as only success or error can be set from one shot operation */}
+        }
+        
+    }
+}
+
 ```
 
 ## Options
