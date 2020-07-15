@@ -1,9 +1,27 @@
 # DataResource
 [![](https://jitpack.io/v/baileytye/DataResource.svg)](https://jitpack.io/#baileytye/DataResource)
 
-Library to handle network/caching code for simple projects
+Library to handle network/caching code for simple projects.
 
-## Example 
+## Gradle
+
+```
+//In app build.gradle
+dependencies {
+    ...
+    implementation 'com.github.baileytye:DataResource:version'
+}
+
+//In project build.gradle
+allprojects {
+    repositories {
+        ...
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+
+## Usage 
 
 ### Create Mapper and Options objects
 ```kotlin 
