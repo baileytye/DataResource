@@ -21,7 +21,7 @@ private val mapper = object : Mapper<String, String> {
 
 private fun createGetStringResource() = NetworkBoundResource.Builder(mapper)
   .options(dataResourceOptions)
-  .networkFetchBlock {"A string from repo" }
+  .networkFetchBlock { "A string from the network" }
   .localCacheBlock { /* Optional caching */ }
   .localFlowFetchBlock { /* Optional flow fetch usually from Room database */ }
   .build()
