@@ -53,7 +53,30 @@ chart shown below.
 
 ### Use For Flow Result
 ```kotlin
-val result : Flow<Result<String>> = createGetStringResource().getFlowResult()
+//In Repository
+fun getStringResultFromRepository() : Flow<Result<String>> = createGetStringResource().getFlowResult()
+
+//In viewModel, .asLiveData() requires  "androidx.lifecycle:lifecycle-livedata-ktx:version" 
+val result : LiveData<Result<String>> = getStringResultFromRepository().asLiveData()
+
+//Have states available if needed, for changing UI based on state
+val isLoading : LiveData<Boolean> = result.map { it is Result.Loading }
+val isError : LiveData<Boolean> = result.map { it is Result.Error }
+val isSuccess : LiveData<Boolean> = result.map { it is Result.Success }
+
+//Map data result
+val string : LiveData<String> = result.map {
+    when {
+        it is Result.Success -> {
+            it.data
+        }
+        it is Result.Error && it.data != null -> {
+            //There was an error, but data is present. Happens when showDataOnError = true
+            it.data!!
+        }
+        else -> "Some default or null"
+    }
+}
 
 ```
 ### Use For One Shot Fetch Operation
