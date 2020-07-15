@@ -27,11 +27,6 @@ class NetworkBoundResource<Network, Local> internal constructor(
     val mapper: Mapper<Network, Local>,
 
     /**
-     * Coroutine dispatcher used to run the resource methods
-     */
-    val coroutineDispatcher: CoroutineDispatcher,
-
-    /**
      * Network fetch block. This is the main source of data. Can be null in which case local
      * flow fetch will be used as the main data source instead.
      */
@@ -51,42 +46,57 @@ class NetworkBoundResource<Network, Local> internal constructor(
     val localCacheBlock: (suspend (Local) -> Unit)?,
 
     /**
-     * Specifies whether local data should be emitted in the event of a network error. Only valid
-     * if a local flow fetch block is defined.
+     * Contains options that can be general for many different resources
      */
-    val showDataOnError: Boolean,
+    val options: Options
 
-    /**
-     * Specifies whether a loading result should be returned while waiting for the network
-     * fetch block to complete. If false and a local flow fetch block is defined, that data will emit
-     * while waiting for the network block to complete. Once the network block completes and is cached, a
-     * new value will be emitted (if using room for flow fetch).
-     */
-    val showLoading: Boolean,
-
-    /**
-     * Error messages used for generic error types. For more control over error messages, implement
-     * [NetworkErrorMapper] and return the results you want through [NetworkResult.GenericError].
-     */
-    val errorMessages: ErrorMessagesResource,
-
-    /**
-     * Network timeout used for network calls.
-     */
-    val networkTimeout: Long,
-
-    /**
-     * Network error mapper used to map network errors to a [NetworkResult] object which is returned from
-     * the internal safe network call.
-     */
-    val networkErrorMapper: NetworkErrorMapper<Network>,
-
-    /**
-     * Logging interceptor called on each [Result.Error] emitted from [getFlowResult] with the
-     * error message given to the block.
-     */
-    val loggingInterceptor: ((String) -> Unit)?
 ) {
+
+    data class Options(
+        /**
+         * Coroutine dispatcher used to run the resource methods
+         */
+        val coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO,
+
+        /**
+         * Specifies whether local data should be emitted in the event of a network error. Only valid
+         * if a local flow fetch block is defined.
+         */
+        val showDataOnError: Boolean = false,
+
+        /**
+         * Specifies whether a loading result should be returned while waiting for the network
+         * fetch block to complete. If false and a local flow fetch block is defined, that data will emit
+         * while waiting for the network block to complete. Once the network block completes and is cached, a
+         * new value will be emitted (if using room for flow fetch).
+         */
+        val showLoading: Boolean = true,
+
+        /**
+         * Error messages used for generic error types. For more control over error messages, implement
+         * [NetworkErrorMapper] and return the results you want through [NetworkResult.GenericError].
+         */
+        val errorMessages: ErrorMessagesResource = DefaultErrorMessages(),
+
+        /**
+         * Network timeout used for network calls.
+         */
+        val networkTimeout: Long = DEFAULT_NETWORK_TIMEOUT,
+
+        /**
+         * Network error mapper used to map network errors to a [NetworkResult] object which is returned from
+         * the internal safe network call.
+         */
+        val networkErrorMapper: NetworkErrorMapper = DefaultNetworkErrorMapper(
+            errorMessages
+        ),
+
+        /**
+         * Logging interceptor called on each [Result.Error] emitted from [getFlowResult] with the
+         * error message given to the block.
+         */
+        val loggingInterceptor: ((String) -> Unit)? = null
+    )
 
 
     /**
@@ -97,41 +107,20 @@ class NetworkBoundResource<Network, Local> internal constructor(
      */
     class Builder<Network, Local> private constructor(
         private val mapper: Mapper<Network, Local>,
-        private var coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO,
         private var networkFetchBlock: (suspend () -> Network)? = null,
         private var localFlowFetchBlock: (suspend () -> Flow<Local>)? = null,
         private var localCacheBlock: (suspend (Local) -> Unit)? = null,
-        private var showDataOnError: Boolean = false,
-        private var showLoading: Boolean = true,
-        private var errorMessages: ErrorMessagesResource = DefaultErrorMessages(),
-        private var networkTimeout: Long = DEFAULT_NETWORK_TIMEOUT,
-        private var networkErrorMapper: NetworkErrorMapper<Network> = DefaultNetworkErrorMapper<Network>(
-            errorMessages
-        ),
-        private var loggingInterceptor: ((String) -> Unit)? = null
+        private var options: Options = Options()
     ) {
 
         constructor(mapper: Mapper<Network, Local>) : this(
             mapper,
-            coroutineDispatcher = Dispatchers.IO,
             networkFetchBlock = null,
             localFlowFetchBlock = null,
             localCacheBlock = null,
-            showDataOnError = false,
-            showLoading = true,
-            errorMessages = DefaultErrorMessages(),
-            networkTimeout = DEFAULT_NETWORK_TIMEOUT,
-            networkErrorMapper = DefaultNetworkErrorMapper<Network>(
-                DefaultErrorMessages()
-            ),
-            loggingInterceptor = null
+            options = Options()
         )
 
-        /**
-         * Sets coroutine dispatcher for calls to run on
-         */
-        fun coroutineDispatcher(coroutineDispatcher: CoroutineDispatcher) =
-            apply { this.coroutineDispatcher = coroutineDispatcher }
 
         /**
          * Sets network fetch block that will be executed
@@ -154,44 +143,10 @@ class NetworkBoundResource<Network, Local> internal constructor(
             apply { this.localCacheBlock = localCacheBlock }
 
         /**
-         * Sets show data on error flag. When this is true, data will be emitted along with an error
-         * message when an error occurs. When this is false, only an error message will be emitted; null data.
+         * Sets the options for the network bound resource
          */
-        fun showDataOnError(showDataOnError: Boolean) =
-            apply { this.showDataOnError = showDataOnError }
-
-        /**
-         * Sets whether loading result should be emitted. When false, local data will be emitted during
-         * loading.
-         */
-        fun showLoading(showLoading: Boolean) =
-            apply { this.showLoading = showLoading }
-
-        /**
-         * Sets the error messages to be displayed on errors. Useful for when different languages are
-         * required.
-         */
-        fun errorMessages(errorMessages: ErrorMessagesResource) =
-            apply { this.errorMessages = errorMessages }
-
-        /**
-         * Sets the network timeout value.
-         */
-        fun networkTimeout(timeout: Long) =
-            apply { this.networkTimeout = timeout }
-
-        /**
-         * Sets the mapper used to convert network errors to a NetworkResult object
-         */
-        fun networkErrorMapper(networkErrorMapper: NetworkErrorMapper<Network>) =
-            apply { this.networkErrorMapper = networkErrorMapper }
-
-        /**
-         * Sets the logging interceptor for the resource. This is called on each value emitted as an error,
-         * and the block is passed the error message.
-         */
-        fun loggingInterceptor(logBlock: (String) -> Unit) =
-            apply { this.loggingInterceptor = logBlock }
+        fun options(options: Options) =
+            apply { this.options = options }
 
 
         /**
@@ -199,16 +154,10 @@ class NetworkBoundResource<Network, Local> internal constructor(
          */
         fun build() = NetworkBoundResource(
             mapper = this.mapper,
-            coroutineDispatcher = this.coroutineDispatcher,
             networkFetchBlock = this.networkFetchBlock,
             localFlowFetchBlock = this.localFlowFetchBlock,
             localCacheBlock = this.localCacheBlock,
-            showDataOnError = this.showDataOnError,
-            showLoading = this.showLoading,
-            errorMessages = this.errorMessages,
-            networkTimeout = this.networkTimeout,
-            networkErrorMapper = this.networkErrorMapper,
-            loggingInterceptor = this.loggingInterceptor
+            options = this.options
         )
     }
 
@@ -218,19 +167,19 @@ class NetworkBoundResource<Network, Local> internal constructor(
      */
     suspend fun oneShotOperation(): Result<Local> {
 
-        val result : Result<Local> =  if (networkFetchBlock != null) {
+        val result: Result<Local> = if (networkFetchBlock != null) {
             val networkResponse: NetworkResult<Network?> =
                 safeApiCall(
-                    dispatcher = coroutineDispatcher,
+                    dispatcher = options.coroutineDispatcher,
                     apiBlock = networkFetchBlock,
-                    errorMessages = errorMessages,
-                    timeout = networkTimeout,
-                    networkErrorMapper = networkErrorMapper
+                    errorMessages = options.errorMessages,
+                    timeout = options.networkTimeout,
+                    networkErrorMapper = options.networkErrorMapper
                 )
             when (networkResponse) {
                 is NetworkResult.Success -> {
                     if (networkResponse.value == null) {
-                        Result.Error(Exception(errorMessages.unknown))
+                        Result.Error(Exception(options.errorMessages.unknown))
                     } else {
                         //If there's a local save block, save and emit local, otherwise emit network
                         localCacheBlock?.let { cacheBlock ->
@@ -243,7 +192,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
                     (Result.Error(Exception(networkResponse.errorMessage)))
                 }
                 NetworkResult.NetworkError -> {
-                    (Result.Error(Exception(errorMessages.genericNetwork)))
+                    (Result.Error(Exception(options.errorMessages.genericNetwork)))
                 }
             }
 
@@ -255,8 +204,8 @@ class NetworkBoundResource<Network, Local> internal constructor(
             )
         }
 
-        if(result is Result.Error) {
-            result.exception.message?.let { loggingInterceptor?.invoke(it) }
+        if (result is Result.Error) {
+            result.exception.message?.let { options.loggingInterceptor?.invoke(it) }
         }
         return result
     }
@@ -280,7 +229,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
         }
 
         //Emit loading if requested
-        if (showLoading) {
+        if (options.showLoading) {
             emit(Result.Loading)
         } else {
             val local = getLocalIfAvailable()
@@ -293,18 +242,18 @@ class NetworkBoundResource<Network, Local> internal constructor(
         if (networkFetchBlock != null) {
             val networkResponse: NetworkResult<Network?> =
                 safeApiCall(
-                    dispatcher = coroutineDispatcher,
+                    dispatcher = options.coroutineDispatcher,
                     apiBlock = networkFetchBlock,
-                    errorMessages = errorMessages,
-                    timeout = networkTimeout,
-                    networkErrorMapper = networkErrorMapper
+                    errorMessages = options.errorMessages,
+                    timeout = options.networkTimeout,
+                    networkErrorMapper = options.networkErrorMapper
                 )
             yield() //Not sure if this is needed, the safeApiCall may do it as it returns since it's a suspend function
 
             when (networkResponse) {
                 is NetworkResult.Success -> {
                     if (networkResponse.value == null) {
-                        emit(Result.Error(Exception(errorMessages.unknown)))
+                        emit(Result.Error(Exception(options.errorMessages.unknown)))
                     } else {
                         //If there's a local save block, save and emit local, otherwise emit network
                         localCacheBlock?.let { cacheBlock ->
@@ -320,25 +269,25 @@ class NetworkBoundResource<Network, Local> internal constructor(
                     }
                 }
                 is NetworkResult.GenericError -> {
-                    if (showDataOnError) {
+                    if (options.showDataOnError) {
                         emitLocalIfNotNull(Exception(networkResponse.errorMessage))
                     } else {
                         emit(Result.Error(Exception(networkResponse.errorMessage)))
                     }
                 }
                 NetworkResult.NetworkError -> {
-                    if (showDataOnError) {
-                        emitLocalIfNotNull(Exception(errorMessages.genericNetwork))
+                    if (options.showDataOnError) {
+                        emitLocalIfNotNull(Exception(options.errorMessages.genericNetwork))
                     } else {
-                        emit(Result.Error(Exception(errorMessages.genericNetwork)))
+                        emit(Result.Error(Exception(options.errorMessages.genericNetwork)))
                     }
                 }
             }
         } else if (localFlowFetchBlock != null) {   //No network call defined, attempt local instead
             val cacheResponse = safeCacheCall(
-                dispatcher = coroutineDispatcher,
+                dispatcher = options.coroutineDispatcher,
                 cacheBlock = localFlowFetchBlock,
-                errorMessages = errorMessages
+                errorMessages = options.errorMessages
             )
             yield()
             when (cacheResponse) {
@@ -348,7 +297,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
                     }
                 }
                 is Result.Error -> emit(Result.Error(cacheResponse.exception))
-                Result.Loading -> emit(Result.Error(Exception(errorMessages.unknown)))
+                Result.Loading -> emit(Result.Error(Exception(options.errorMessages.unknown)))
             }
         } else {
             emit(
@@ -359,9 +308,9 @@ class NetworkBoundResource<Network, Local> internal constructor(
                 )
             )
         }
-    }.onEach {result ->
+    }.onEach { result ->
         if (result is Result.Error) {
-            result.exception.message?.let { loggingInterceptor?.invoke(it) }
+            result.exception.message?.let { options.loggingInterceptor?.invoke(it) }
         }
     }
 

@@ -25,6 +25,11 @@ internal class NetworkBoundResourceTest {
         override fun networkToLocal(network: String) = network
         override fun localToNetwork(local: String) = local
     }
+    private val options = NetworkBoundResource.Options(
+        coroutineDispatcher = dispatcher,
+        errorMessages = errorMessages,
+        showLoading = false
+    )
 
     @Nested
     @DisplayName("Get Result")
@@ -55,10 +60,8 @@ internal class NetworkBoundResourceTest {
                     delay(2000)
                     throw Exception("Should not throw")
                 }
-                .showLoading(false)
+                .options(options.copy(networkTimeout = 1000))
                 .localCacheBlock { localCached = true }
-                .coroutineDispatcher(dispatcher)
-                .networkTimeout(1000)
                 .build()
 
             //When
@@ -83,10 +86,9 @@ internal class NetworkBoundResourceTest {
                     .networkFetchBlock {
                         throw Exception("Some unknown error")
                     }
-                    .showLoading(false)
+                    .options(options)
                     .localCacheBlock { localCached = true }
                     .localFlowFetchBlock { emptyFlow() }
-                    .coroutineDispatcher(dispatcher)
                     .build()
 
                 //When
@@ -111,10 +113,9 @@ internal class NetworkBoundResourceTest {
                     .networkFetchBlock {
                         throw Exception("Some unknown error")
                     }
-                    .showLoading(false)
+                    .options(options)
                     .localCacheBlock { localCached = true }
                     .localFlowFetchBlock { flowOf("local") }
-                    .coroutineDispatcher(dispatcher)
                     .build()
 
                 //When
@@ -140,11 +141,9 @@ internal class NetworkBoundResourceTest {
                     .networkFetchBlock {
                         throw Exception("Some unknown error")
                     }
-                    .showDataOnError(true)
-                    .showLoading(false)
+                    .options(options.copy(showDataOnError = true))
                     .localCacheBlock { localCached = true }
                     .localFlowFetchBlock { flowOf("local") }
-                    .coroutineDispatcher(dispatcher)
                     .build()
 
                 //When
@@ -171,9 +170,8 @@ internal class NetworkBoundResourceTest {
                     .networkFetchBlock {
                         throw Exception("Some unknown error")
                     }
-                    .showLoading(false)
+                    .options(options)
                     .localCacheBlock { localCached = true }
-                    .coroutineDispatcher(dispatcher)
                     .build()
 
                 //When
@@ -196,8 +194,7 @@ internal class NetworkBoundResourceTest {
 
                 val resource = builder
                     .networkFetchBlock { networkData }
-                    .showLoading(true)
-                    .coroutineDispatcher(dispatcher)
+                    .options(options.copy(showLoading = true))
                     .build()
 
                 //When
@@ -215,14 +212,13 @@ internal class NetworkBoundResourceTest {
             dispatcher.runBlockingTest {
                 //Given
                 val builder = NetworkBoundResource.Builder(mapper)
-                val networkData ="Some network data"
+                val networkData = "Some network data"
                 var cachedLocally = false
 
                 val resource = builder
                     .networkFetchBlock { networkData }
-                    .showLoading(true)
+                    .options(options.copy(showLoading = true))
                     .localCacheBlock { cachedLocally = true }
-                    .coroutineDispatcher(dispatcher)
                     .build()
 
                 //When
@@ -241,14 +237,14 @@ internal class NetworkBoundResourceTest {
             dispatcher.runBlockingTest {
                 //Given
                 val builder = NetworkBoundResource.Builder(mapper)
-                val networkData ="Some network data"
+                val networkData = "Some network data"
                 var localData = "Old data"
                 var localFetched = false
                 var cachedLocal = false
 
                 val resource = builder
                     .networkFetchBlock { networkData }
-                    .showLoading(true)
+                    .options(options.copy(showLoading = true))
                     .localCacheBlock {
                         cachedLocal = true
                         localData = it
@@ -257,7 +253,6 @@ internal class NetworkBoundResourceTest {
                         localFetched = true
                         flowOf(localData)
                     }
-                    .coroutineDispatcher(dispatcher)
                     .build()
 
                 //When
@@ -277,12 +272,11 @@ internal class NetworkBoundResourceTest {
             dispatcher.runBlockingTest {
                 //Given
                 val builder = NetworkBoundResource.Builder(mapper)
-                val networkData ="Some network data"
+                val networkData = "Some network data"
 
                 val resource = builder
                     .networkFetchBlock { networkData }
-                    .showLoading(false)
-                    .coroutineDispatcher(dispatcher)
+                    .options(options)
                     .build()
 
                 //When
@@ -305,8 +299,7 @@ internal class NetworkBoundResourceTest {
 
                 val resource = builder
                     .networkFetchBlock { throw Exception("Some network exception") }
-                    .showLoading(true)
-                    .showDataOnError(true)
+                    .options(options.copy(showLoading = true, showDataOnError = true))
                     .localCacheBlock {
                         cachedLocal = true
                         localData = it
@@ -315,7 +308,6 @@ internal class NetworkBoundResourceTest {
                         localFetched = true
                         flowOf(localData)
                     }
-                    .coroutineDispatcher(dispatcher)
                     .build()
 
                 //When
@@ -340,8 +332,7 @@ internal class NetworkBoundResourceTest {
 
                 val resource = builder
                     .networkFetchBlock { throw Exception("Some network exception") }
-                    .showLoading(true)
-                    .showDataOnError(true)
+                    .options(options.copy(showLoading = true, showDataOnError = true))
                     .localCacheBlock {
                         cachedLocal = true
                     }
@@ -349,7 +340,6 @@ internal class NetworkBoundResourceTest {
                         localFetched = true
                         flowOf()
                     }
-                    .coroutineDispatcher(dispatcher)
                     .build()
 
                 //When
@@ -372,12 +362,9 @@ internal class NetworkBoundResourceTest {
 
             val resource = builder
                 .networkFetchBlock { throw Exception("Some network exception") }
-                .showLoading(true)
-                .showDataOnError(true)
-                .loggingInterceptor {
+                .options(options.copy(showLoading = true, showDataOnError = true, loggingInterceptor = {
                     loggedMessage = it
-                }
-                .coroutineDispatcher(dispatcher)
+                }))
                 .build()
 
             //When
@@ -402,7 +389,7 @@ internal class NetworkBoundResourceTest {
             //Given
             val builder = NetworkBoundResource.Builder(mapper)
             val resource = builder
-                .coroutineDispatcher(dispatcher)
+                .options(options)
                 .build()
 
             //When
@@ -420,7 +407,7 @@ internal class NetworkBoundResourceTest {
             val networkData = "Network data"
             val resource = builder
                 .networkFetchBlock { networkData }
-                .coroutineDispatcher(dispatcher)
+                .options(options)
                 .build()
 
             //When
@@ -437,7 +424,7 @@ internal class NetworkBoundResourceTest {
             val builder = NetworkBoundResource.Builder(mapper)
             val resource = builder
                 .networkFetchBlock { throw Exception("Some unknown error") }
-                .coroutineDispatcher(dispatcher)
+                .options(options)
                 .build()
 
             //When
@@ -446,7 +433,7 @@ internal class NetworkBoundResourceTest {
             //Then
             assertThat(result).isInstanceOf(Result.Error::class.java)
             assertThat((result as Result.Error).data).isNull()
-            assertThat(result.exception.message ).isEqualTo(errorMessages.unknown)
+            assertThat(result.exception.message).isEqualTo(errorMessages.unknown)
         }
 
         @Test
@@ -459,8 +446,7 @@ internal class NetworkBoundResourceTest {
                     delay(200)
                     networkData
                 }
-                .networkTimeout(100)
-                .coroutineDispatcher(dispatcher)
+                .options(options.copy(networkTimeout = 100))
                 .build()
 
             //When
@@ -469,7 +455,7 @@ internal class NetworkBoundResourceTest {
             //Then
             assertThat(result).isInstanceOf(Result.Error::class.java)
             assertThat((result as Result.Error).data).isNull()
-            assertThat(result.exception.message ).isEqualTo(errorMessages.networkTimeout)
+            assertThat(result.exception.message).isEqualTo(errorMessages.networkTimeout)
         }
 
         @Test
@@ -480,12 +466,9 @@ internal class NetworkBoundResourceTest {
 
             val resource = builder
                 .networkFetchBlock { throw Exception("Some network exception") }
-                .showLoading(true)
-                .showDataOnError(true)
-                .loggingInterceptor {
+                .options(options.copy(showLoading = true, showDataOnError = true, loggingInterceptor = {
                     loggedMessage = it
-                }
-                .coroutineDispatcher(dispatcher)
+                }))
                 .build()
 
             //When

@@ -12,12 +12,21 @@ import java.io.IOException
 import com.baileytye.dataresource.model.Result
 
 
+/**
+ * Performs a safe api which catches errors and returns a result wrapped in a [NetworkResult] object.
+ * @param dispatcher dispatcher to run call on
+ * @param apiBlock block to retrieve result
+ * @param errorMessages messages to display in case of error
+ * @param timeout timeout in ms
+ * @param networkErrorMapper mapper to handle errors, by default the errors handled are: IOException, NotImplementedException,
+ *                           others are returned as generic errors.
+ */
 suspend fun <T> safeApiCall(
     dispatcher: CoroutineDispatcher,
     apiBlock: suspend () -> T?,
     errorMessages: ErrorMessagesResource,
     timeout: Long = DEFAULT_NETWORK_TIMEOUT,
-    networkErrorMapper: NetworkErrorMapper<T> = DefaultNetworkErrorMapper(
+    networkErrorMapper: NetworkErrorMapper = DefaultNetworkErrorMapper(
         errorMessages
     )
 ): NetworkResult<T?> {
@@ -28,7 +37,7 @@ suspend fun <T> safeApiCall(
                 try {
                     NetworkResult.Success(apiBlock())
                 } catch (throwable: Throwable) {
-                        networkErrorMapper.mapNetworkError(throwable)
+                    networkErrorMapper.mapNetworkError(throwable)
                 }
             }
         } catch (throwable: Throwable) {
@@ -49,6 +58,13 @@ suspend fun <T> safeApiCall(
 }
 
 
+/**
+ * Performs a safe cache call and returns a result wrapped in a [Result] object
+ * @param dispatcher dispatcher to run call on
+ * @param cacheBlock block to retrieve result
+ * @param errorMessages messages to display in case of error
+ * @param timeout timeout in ms
+ */
 suspend fun <T> safeCacheCall(
     dispatcher: CoroutineDispatcher,
     cacheBlock: suspend () -> T?,

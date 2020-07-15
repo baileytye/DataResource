@@ -44,8 +44,8 @@ class NetworkHelpersKtTest{
         fun `check custom error mapper works as expected`() = dispatcher.runBlockingTest {
             //Given
             val networkErrorMapper = object :
-                NetworkErrorMapper<String> {
-                override fun mapNetworkError(throwable: Throwable): NetworkResult<String> {
+                NetworkErrorMapper {
+                override fun mapNetworkError(throwable: Throwable): NetworkResult<Nothing> {
                     return when(throwable){
                         is IOException -> {
                             NetworkResult.GenericError(errorMessage = "IO")}

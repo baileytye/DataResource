@@ -17,7 +17,7 @@ internal class DefaultNetworkErrorMapperTest{
     private val dispatcher = TestCoroutineDispatcher()
     private val errorMessages = DefaultErrorMessages()
     private val defaultNetworkErrorMapper =
-        DefaultNetworkErrorMapper<String>(
+        DefaultNetworkErrorMapper(
             errorMessages
         )
 
