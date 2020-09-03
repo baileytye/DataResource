@@ -3,7 +3,6 @@ package com.baileytye.dataresource.networkBoundResource
 import com.baileytye.dataresource.model.DefaultErrorMessages
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.runBlockingTest
 import org.junit.jupiter.api.DisplayName
@@ -12,8 +11,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import com.baileytye.dataresource.model.Result
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.runBlocking
 
 @ExperimentalCoroutinesApi
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -355,21 +354,22 @@ internal class NetworkBoundResourceTest {
             }
 
         @Test
-        fun `check logging interceptor is called on result error`() = runBlockingTest {
+        fun `check logging interceptor is called on result error`() = dispatcher.runBlockingTest {
             //Given
             val builder = NetworkBoundResource.Builder(mapper)
             var loggedMessage = ""
 
             val resource = builder
-                .networkFetchBlock { throw Exception("Some network exception") }
-                .options(options.copy(showLoading = true, showDataOnError = true, loggingInterceptor = {
+                .options(options.copy(showLoading = true, loggingInterceptor = {
                     loggedMessage = it
                 }))
+                .networkFetchBlock { throw Exception("Some network exception") }
                 .build()
 
             //When
             val response = resource.getFlowResult()
             val list = response.toList()
+
 
             //Then
             assertThat(list).hasSize(2)

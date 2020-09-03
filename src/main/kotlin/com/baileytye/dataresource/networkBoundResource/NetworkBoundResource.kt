@@ -1,4 +1,3 @@
-
 /*
  *  Copyright [2020] [Bailey Tye]
  *
@@ -22,12 +21,13 @@ import com.baileytye.dataresource.model.ErrorMessagesResource
 import com.baileytye.dataresource.model.NetworkResult
 import com.baileytye.dataresource.model.Result
 import com.baileytye.dataresource.util.DEFAULT_NETWORK_TIMEOUT
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.yield
 import com.baileytye.dataresource.util.safeApiCall
 import com.baileytye.dataresource.util.safeCacheCall
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 
 
 /**
@@ -182,7 +182,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
      * Execute a one shot operation, cannot show loading or data on error since it is only a suspend
      * function and not a flow.
      */
-    suspend fun oneShotOperation(): Result<Local> {
+    suspend fun oneShotOperation(): Result<Local> = withContext(options.coroutineDispatcher) {
 
         val result: Result<Local> = if (networkFetchBlock != null) {
             val networkResponse: NetworkResult<Network?> =
@@ -224,7 +224,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
         if (result is Result.Error) {
             result.exception.message?.let { options.loggingInterceptor?.invoke(it) }
         }
-        return result
+        result
     }
 
     /**
@@ -325,11 +325,13 @@ class NetworkBoundResource<Network, Local> internal constructor(
                 )
             )
         }
-    }.onEach { result ->
-        if (result is Result.Error) {
-            result.exception.message?.let { options.loggingInterceptor?.invoke(it) }
-        }
     }
+        .flowOn(options.coroutineDispatcher)
+        .onEach { result ->
+            if (result is Result.Error) {
+                result.exception.message?.let { options.loggingInterceptor?.invoke(it) }
+            }
+        }
 
     /**
      * Check if local flow fetch block is defined and if so return the first value emitted
