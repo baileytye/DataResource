@@ -263,6 +263,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
 
         if (
 //            cachedResult != null &&
+            options.tempCacheResult &&
             System.currentTimeMillis() - lastRequestTime < options.tempCacheStaleTimeout
             && networkFetchBlock != null
         ) {
@@ -348,10 +349,6 @@ class NetworkBoundResource<Network, Local> internal constructor(
                     emit(Result.Error<Local>(Exception(options.errorMessages.unknown)))
                 } else {
                     handleNetworkSuccess(networkResponse.value)
-                    if (options.tempCacheResult) {
-//                        cachedResult = networkResponse.value
-                        lastRequestTime = System.currentTimeMillis()
-                    }
                 }
             }
             is NetworkResult.GenericError -> {
@@ -386,6 +383,10 @@ class NetworkBoundResource<Network, Local> internal constructor(
 
             //If there's a local fetch block emit those values, otherwise emit network
             localFlowFetchBlock?.let { localFlow ->
+                if (options.tempCacheResult) {
+//                        cachedResult = networkResponse.value
+                    lastRequestTime = System.currentTimeMillis()
+                }
                 localFlow().collect { value ->
                     emit(Result.Success(value))
                 }
