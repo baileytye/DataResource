@@ -4,15 +4,12 @@ import com.baileytye.dataresource.model.DefaultErrorMessages
 import com.baileytye.dataresource.model.Result
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.runBlockingTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import kotlin.time.ExperimentalTime
-import kotlin.time.minutes
 
 @ExperimentalCoroutinesApi
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -29,8 +26,8 @@ class NetworkBoundResourceCacheTest {
         coroutineDispatcher = dispatcher,
         errorMessages = errorMessages,
         showLoading = true,
-        cacheResult = true,
-        cacheStaleTimeout = 100
+        tempCacheResult = true,
+        tempCacheStaleTimeout = 100
     )
 
 //    @Test
@@ -44,16 +41,23 @@ class NetworkBoundResourceCacheTest {
     fun `check get flow result with fresh value returns the same value`() = dispatcher.runBlockingTest {
         //Given
         var firstFetch = true
+        var cachedValue = "stale"
         val resource = NetworkBoundResource.Builder(mapper).options(options).networkFetchBlock {
             if (firstFetch) {
                 firstFetch = false
                 "first"
             } else "other"
+        }.localCacheBlock {
+            cachedValue = it
+        }.localFlowFetchBlock {
+            flowOf(cachedValue)
         }.build()
 
         //When
         val firstResultFlow = resource.getFlowResult().toList()
+        assertThat(cachedValue).isEqualTo("first")
         val secondResultFlow = resource.getFlowResult().toList()
+        assertThat(cachedValue).isEqualTo("first")
 
         //Then
         assertThat(firstResultFlow).hasSize(2)
@@ -65,64 +69,71 @@ class NetworkBoundResourceCacheTest {
     fun `check get flow result with stale value returns new value`() = dispatcher.runBlockingTest {
         //Given
         var firstFetch = true
-        val resource = NetworkBoundResource.Builder(mapper).options(options.copy(cacheStaleTimeout = 0)).networkFetchBlock {
+        var cachedValue = "stale"
+        val resource = NetworkBoundResource.Builder(mapper).options(options.copy(tempCacheStaleTimeout = 0)).networkFetchBlock {
             if (firstFetch) {
                 firstFetch = false
                 "first"
             } else "other"
+        }.localCacheBlock {
+            cachedValue = it
+        }.localFlowFetchBlock {
+            flowOf(cachedValue)
         }.build()
 
         //When
         val firstResultFlow = resource.getFlowResult().toList()
+        assertThat(cachedValue).isEqualTo("first")
         val secondResultFlow = resource.getFlowResult().toList()
+        assertThat(cachedValue).isEqualTo("other")
 
         //Then
         assertThat(firstResultFlow).hasSize(2)
         assertThat(secondResultFlow).hasSize(2)
         assertThat((secondResultFlow[1] as Result.Success).data).isEqualTo("other")
     }
-
-    @Test
-    fun `check one shot with fresh value returns the same value`() = dispatcher.runBlockingTest {
-        //Given
-        var firstFetch = true
-        val resource = NetworkBoundResource.Builder(mapper).options(options).networkFetchBlock {
-            if (firstFetch) {
-                firstFetch = false
-                "first"
-            } else "other"
-        }.build()
-
-        //When
-        val firstResult = resource.oneShotOperation()
-        val secondResult = resource.oneShotOperation()
-
-        //Then
-        assertThat(firstResult).isInstanceOf(Result.Success::class.java)
-        assertThat((firstResult as Result.Success).data).isEqualTo("first")
-        assertThat(secondResult).isInstanceOf(Result.Success::class.java)
-        assertThat((secondResult as Result.Success).data).isEqualTo("first")
-    }
-
-    @Test
-    fun `check one shot with stale value returns new value`() = dispatcher.runBlockingTest {
-        //Given
-        var firstFetch = true
-        val resource = NetworkBoundResource.Builder(mapper).options(options.copy(cacheStaleTimeout = 0)).networkFetchBlock {
-            if (firstFetch) {
-                firstFetch = false
-                "first"
-            } else "other"
-        }.build()
-
-        //When
-        val firstResult = resource.oneShotOperation()
-        val secondResult = resource.oneShotOperation()
-
-        //Then
-        assertThat(firstResult).isInstanceOf(Result.Success::class.java)
-        assertThat((firstResult as Result.Success).data).isEqualTo("first")
-        assertThat(secondResult).isInstanceOf(Result.Success::class.java)
-        assertThat((secondResult as Result.Success).data).isEqualTo("other")
-    }
+//
+//    @Test
+//    fun `check one shot with fresh value returns the same value`() = dispatcher.runBlockingTest {
+//        //Given
+//        var firstFetch = true
+//        val resource = NetworkBoundResource.Builder(mapper).options(options).networkFetchBlock {
+//            if (firstFetch) {
+//                firstFetch = false
+//                "first"
+//            } else "other"
+//        }.build()
+//
+//        //When
+//        val firstResult = resource.oneShotOperation()
+//        val secondResult = resource.oneShotOperation()
+//
+//        //Then
+//        assertThat(firstResult).isInstanceOf(Result.Success::class.java)
+//        assertThat((firstResult as Result.Success).data).isEqualTo("first")
+//        assertThat(secondResult).isInstanceOf(Result.Success::class.java)
+//        assertThat((secondResult as Result.Success).data).isEqualTo("first")
+//    }
+//
+//    @Test
+//    fun `check one shot with stale value returns new value`() = dispatcher.runBlockingTest {
+//        //Given
+//        var firstFetch = true
+//        val resource = NetworkBoundResource.Builder(mapper).options(options.copy(tempCacheStaleTimeout = 0)).networkFetchBlock {
+//            if (firstFetch) {
+//                firstFetch = false
+//                "first"
+//            } else "other"
+//        }.build()
+//
+//        //When
+//        val firstResult = resource.oneShotOperation()
+//        val secondResult = resource.oneShotOperation()
+//
+//        //Then
+//        assertThat(firstResult).isInstanceOf(Result.Success::class.java)
+//        assertThat((firstResult as Result.Success).data).isEqualTo("first")
+//        assertThat(secondResult).isInstanceOf(Result.Success::class.java)
+//        assertThat((secondResult as Result.Success).data).isEqualTo("other")
+//    }
 }

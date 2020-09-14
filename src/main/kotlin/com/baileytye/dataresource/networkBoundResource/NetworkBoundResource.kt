@@ -119,14 +119,14 @@ class NetworkBoundResource<Network, Local> internal constructor(
          *
          * Used to hold onto results between refreshing. When set to true, and another call to getFlowResult or
          * onShotOperation is invoked, the same value will be instantly emited/returned as long as the result is
-         * still considered 'fresh', ie. time since last fetch < [cacheStaleTimeout]
+         * still considered 'fresh', ie. time since last fetch < [tempCacheStaleTimeout]
          */
-        val cacheResult: Boolean = false,
+        val tempCacheResult: Boolean = false,
 
         /**
          * How long to keep the cache result before it is considered stale in milli seconds
          */
-        val cacheStaleTimeout: Long = 0
+        val tempCacheStaleTimeout: Long = 0
     )
 
 
@@ -192,7 +192,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
         )
     }
 
-    private var cachedResult: Network? = null
+    //    private var cachedResult: Network? = null
     private var lastRequestTime: Long = 0
 
     /**
@@ -201,13 +201,14 @@ class NetworkBoundResource<Network, Local> internal constructor(
      */
     suspend fun oneShotOperation(): Result<Local> = withContext(options.coroutineDispatcher) {
 
-        val result: Result<Local> = if (
-            cachedResult != null
-            && System.currentTimeMillis() - lastRequestTime < options.cacheStaleTimeout
-            && networkFetchBlock != null
-        ) {
-            Result.Success(mapper.networkToLocal(cachedResult!!))
-        } else if (networkFetchBlock != null) {
+//        val result: Result<Local> = if (
+//            cachedResult != null
+//            && System.currentTimeMillis() - lastRequestTime < options.tempCacheStaleTimeout
+//            && networkFetchBlock != null
+//        ) {
+//            Result.Success(mapper.networkToLocal(cachedResult!!))
+//        } else
+        val result = if (networkFetchBlock != null) {
             val networkResponse: NetworkResult<Network?> =
                 safeApiCall(
                     dispatcher = options.coroutineDispatcher,
@@ -225,10 +226,10 @@ class NetworkBoundResource<Network, Local> internal constructor(
                         localCacheBlock?.let { cacheBlock ->
                             cacheBlock(mapper.networkToLocal(networkResponse.value))
                         }
-                        if (options.cacheResult) {
-                            cachedResult = networkResponse.value
-                            lastRequestTime = System.currentTimeMillis()
-                        }
+//                        if (options.tempCacheResult) {
+//                            cachedResult = networkResponse.value
+//                            lastRequestTime = System.currentTimeMillis()
+//                        }
                         (Result.Success(mapper.networkToLocal(networkResponse.value)))
                     }
                 }
@@ -260,11 +261,18 @@ class NetworkBoundResource<Network, Local> internal constructor(
      */
     fun getFlowResult(): Flow<Result<Local>> = flow {
 
-        if (cachedResult != null
-            && System.currentTimeMillis() - lastRequestTime < options.cacheStaleTimeout
+        if (
+//            cachedResult != null &&
+            System.currentTimeMillis() - lastRequestTime < options.tempCacheStaleTimeout
             && networkFetchBlock != null
         ) {
-            handleNetworkSuccess(cachedResult!!)
+//            handleNetworkSuccess(cachedResult!!)
+
+            localFlowFetchBlock?.let { localFlow ->
+                localFlow().collect { value ->
+                    emit(Result.Success(value))
+                }
+            } ?: throw MissingArgumentException("Flow fetch block required when using temporary caching")
             return@flow
         }
 
@@ -304,9 +312,9 @@ class NetworkBoundResource<Network, Local> internal constructor(
         }
 
     /**
-     * Emit local value if not null, if empty or null emit error
+     * Emit local value as error if not null, if empty or null emit error
      */
-    private suspend fun FlowCollector<Result<Local>>.emitLocalIfNotNull(e: Exception) {
+    private suspend fun FlowCollector<Result<Local>>.emitLocalAsErrorIfNotNull(e: Exception) {
         localFlowFetchBlock?.let { localFlow ->
             if (flowFromFetchIsEmpty()) {
                 emit(Result.Error(e, null))
@@ -340,22 +348,22 @@ class NetworkBoundResource<Network, Local> internal constructor(
                     emit(Result.Error<Local>(Exception(options.errorMessages.unknown)))
                 } else {
                     handleNetworkSuccess(networkResponse.value)
-                    if (options.cacheResult) {
-                        cachedResult = networkResponse.value
+                    if (options.tempCacheResult) {
+//                        cachedResult = networkResponse.value
                         lastRequestTime = System.currentTimeMillis()
                     }
                 }
             }
             is NetworkResult.GenericError -> {
                 if (options.showDataOnError) {
-                    emitLocalIfNotNull(Exception(networkResponse.errorMessage))
+                    emitLocalAsErrorIfNotNull(Exception(networkResponse.errorMessage))
                 } else {
                     emit(Result.Error<Local>(Exception(networkResponse.errorMessage)))
                 }
             }
             NetworkResult.NetworkError -> {
                 if (options.showDataOnError) {
-                    emitLocalIfNotNull(Exception(options.errorMessages.genericNetwork))
+                    emitLocalAsErrorIfNotNull(Exception(options.errorMessages.genericNetwork))
                 } else {
                     emit(Result.Error<Local>(Exception(options.errorMessages.genericNetwork)))
                 }
@@ -367,6 +375,11 @@ class NetworkBoundResource<Network, Local> internal constructor(
      * Block to handle a network response success
      */
     private suspend fun FlowCollector<Result<Local>>.handleNetworkSuccess(network: Network) {
+        if (options.tempCacheResult) {
+            if (localCacheBlock == null)
+                throw (MissingArgumentException("Cache block required when using temp cache"))
+        }
+
         //If there's a local save block, save and emit local, otherwise emit network
         localCacheBlock?.let { cacheBlock ->
             cacheBlock(mapper.networkToLocal(network))
