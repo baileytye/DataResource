@@ -232,6 +232,36 @@ internal class NetworkBoundResourceTest {
             }
 
         @Test
+        fun `check fetch network success with null value when specified nullable - returns null`() =
+            dispatcher.runBlockingTest {
+                //Given
+                val nullableMapper = object : Mapper<String?, String?> {
+                    override fun networkToLocal(network: String?) = network
+                    override fun localToNetwork(local: String?) = local
+                }
+                val builder = NetworkBoundResource.Builder(nullableMapper)
+                val networkData: String? = null
+                var localData: String? = ""
+                val resource = builder.options(options.copy(showLoading = true)).networkFetchBlock {
+                    networkData
+                }
+                    .localCacheBlock {
+                        localData = it
+                    }
+                    .localFlowFetchBlock { flowOf(localData) }
+                    .build()
+
+                //When
+                val response = resource.getFlowResult()
+                val list = response.toList()
+
+                //Then
+                assertThat(list).hasSize(2)
+                assertThat(list[1]).isEqualTo(Result.Success(null))
+            }
+
+
+        @Test
         fun `check fetch network success save to local cache - return local data`() =
             dispatcher.runBlockingTest {
                 //Given
@@ -435,6 +465,33 @@ internal class NetworkBoundResourceTest {
             assertThat((result as Result.Error).data).isNull()
             assertThat(result.exception.message).isEqualTo(errorMessages.unknown)
         }
+
+        @Test
+        fun `check fetch network success with null value when specified nullable - returns null`() =
+            dispatcher.runBlockingTest {
+                //Given
+                val nullableMapper = object : Mapper<String?, String?> {
+                    override fun networkToLocal(network: String?) = network
+                    override fun localToNetwork(local: String?) = local
+                }
+                val builder = NetworkBoundResource.Builder(nullableMapper)
+                val networkData: String? = null
+                var localData: String? = ""
+                val resource = builder.options(options.copy(showLoading = true)).networkFetchBlock {
+                    networkData
+                }
+                    .localCacheBlock {
+                        localData = it
+                    }
+                    .build()
+
+                //When
+                val response = resource.oneShotOperation()
+
+                //Then
+                assertThat(response).isEqualTo(Result.Success(null))
+                assertThat(localData).isNull()
+            }
 
         @Test
         fun `check oneshot fetch network with timeout error`() = dispatcher.runBlockingTest {

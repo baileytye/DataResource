@@ -201,15 +201,8 @@ class NetworkBoundResource<Network, Local> internal constructor(
      */
     suspend fun oneShotOperation(): Result<Local> = withContext(options.coroutineDispatcher) {
 
-//        val result: Result<Local> = if (
-//            cachedResult != null
-//            && System.currentTimeMillis() - lastRequestTime < options.tempCacheStaleTimeout
-//            && networkFetchBlock != null
-//        ) {
-//            Result.Success(mapper.networkToLocal(cachedResult!!))
-//        } else
         val result = if (networkFetchBlock != null) {
-            val networkResponse: NetworkResult<Network?> =
+            val networkResponse: NetworkResult<Network> =
                 safeApiCall(
                     dispatcher = options.coroutineDispatcher,
                     apiBlock = networkFetchBlock,
@@ -219,19 +212,10 @@ class NetworkBoundResource<Network, Local> internal constructor(
                 )
             when (networkResponse) {
                 is NetworkResult.Success -> {
-                    if (networkResponse.value == null) {
-                        Result.Error(Exception(options.errorMessages.unknown))
-                    } else {
-                        //If there's a local save block, save and emit local, otherwise emit network
-                        localCacheBlock?.let { cacheBlock ->
-                            cacheBlock(mapper.networkToLocal(networkResponse.value))
-                        }
-//                        if (options.tempCacheResult) {
-//                            cachedResult = networkResponse.value
-//                            lastRequestTime = System.currentTimeMillis()
-//                        }
-                        (Result.Success(mapper.networkToLocal(networkResponse.value)))
+                    localCacheBlock?.let { cacheBlock ->
+                        cacheBlock(mapper.networkToLocal(networkResponse.value))
                     }
+                    (Result.Success(mapper.networkToLocal(networkResponse.value)))
                 }
                 is NetworkResult.GenericError -> {
                     (Result.Error(Exception(networkResponse.errorMessage)))
@@ -262,12 +246,10 @@ class NetworkBoundResource<Network, Local> internal constructor(
     fun getFlowResult(): Flow<Result<Local>> = flow {
 
         if (
-//            cachedResult != null &&
             options.tempCacheResult &&
             System.currentTimeMillis() - lastRequestTime < options.tempCacheStaleTimeout
             && networkFetchBlock != null
         ) {
-//            handleNetworkSuccess(cachedResult!!)
 
             localFlowFetchBlock?.let { localFlow ->
                 localFlow().collect { value ->
@@ -333,7 +315,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
      * @param networkFetchBlock Non null version of network fetch block
      */
     private suspend fun FlowCollector<Result<Local>>.handleNetworkPath(networkFetchBlock: (suspend () -> Network)) {
-        val networkResponse: NetworkResult<Network?> =
+        val networkResponse: NetworkResult<Network> =
             safeApiCall(
                 dispatcher = options.coroutineDispatcher,
                 apiBlock = networkFetchBlock,
@@ -345,11 +327,7 @@ class NetworkBoundResource<Network, Local> internal constructor(
 
         when (networkResponse) {
             is NetworkResult.Success -> {
-                if (networkResponse.value == null) {
-                    emit(Result.Error<Local>(Exception(options.errorMessages.unknown)))
-                } else {
-                    handleNetworkSuccess(networkResponse.value)
-                }
+                handleNetworkSuccess(networkResponse.value)
             }
             is NetworkResult.GenericError -> {
                 if (options.showDataOnError) {
@@ -384,7 +362,6 @@ class NetworkBoundResource<Network, Local> internal constructor(
             //If there's a local fetch block emit those values, otherwise emit network
             localFlowFetchBlock?.let { localFlow ->
                 if (options.tempCacheResult) {
-//                        cachedResult = networkResponse.value
                     lastRequestTime = System.currentTimeMillis()
                 }
                 localFlow().collect { value ->

@@ -39,13 +39,13 @@ import com.baileytye.dataresource.model.Result
  */
 suspend fun <T> safeApiCall(
     dispatcher: CoroutineDispatcher,
-    apiBlock: suspend () -> T?,
+    apiBlock: suspend () -> T,
     errorMessages: ErrorMessagesResource,
     timeout: Long = DEFAULT_NETWORK_TIMEOUT,
     networkErrorMapper: NetworkErrorMapper = DefaultNetworkErrorMapper(
         errorMessages
     )
-): NetworkResult<T?> {
+): NetworkResult<T> {
     return withContext(dispatcher) {
         try {
             // throws TimeoutCancellationException
