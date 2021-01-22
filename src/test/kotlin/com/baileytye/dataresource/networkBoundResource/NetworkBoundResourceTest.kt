@@ -408,6 +408,29 @@ internal class NetworkBoundResourceTest {
             assertThat(loggedMessage).isEqualTo(errorMessages.unknown)
         }
 
+        @Test
+        fun `check error thrown from flow mapping is caught by getFlowResult`() = dispatcher.runBlockingTest {
+            //Given
+            val builder = NetworkBoundResource.Builder(mapper)
+            val networkData = "Some network data"
+            var localData = "Old data"
+
+            val resource = builder.options(options.copy(showLoading = true))
+                .networkFetchBlock { networkData }
+                .localCacheBlock { localData = networkData }
+                .localFlowFetchBlock { flowOf(throw IllegalStateException("Some error in flow")) }
+                .build()
+
+            //When
+            val response = resource.getFlowResult()
+            val list = response.toList()
+
+            //Then
+            assertThat(list).hasSize(2)
+            assertThat(list[1]).isInstanceOf(Result.Error::class.java)
+            assertThat((list[1] as Result.Error).exception.message).isEqualTo("Some error in flow")
+        }
+
     }
 
     @Nested

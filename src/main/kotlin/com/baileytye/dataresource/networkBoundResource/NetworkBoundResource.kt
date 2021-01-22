@@ -292,6 +292,9 @@ class NetworkBoundResource<Network, Local> internal constructor(
             if (result is Result.Error) {
                 result.exception.message?.let { options.loggingInterceptor?.invoke(it) }
             }
+        }.catch { e ->
+            e.printStackTrace()
+            emit(Result.Error(Exception(e.message)))
         }
 
     /**
