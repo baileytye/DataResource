@@ -2,6 +2,8 @@
 [![](https://jitpack.io/v/baileytye/DataResource.svg)](https://jitpack.io/#baileytye/DataResource)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
+Deprecated - use [Dropbox-Store](https://github.com/dropbox/Store) 
+
 Library to handle network/caching code for simple projects.
 
 ## Gradle
